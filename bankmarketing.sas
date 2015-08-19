@@ -40,3 +40,27 @@ proc logistic data=bankmarketing outest=betas covout;
        output out=pred p=phat lower=lcl upper=ucl
              predprob=(individual crossvalidate);
    run;
+   
+PROC TRANSREG DATA = bankmarketing
+DESIGN NOPRINT ;
+
+MODEL CLASS (job  contact month day_of_week poutcome) ;
+
+OUTPUT OUT = TableauDisjonctifComplet ;
+
+RUN ;
+proc corresp mca  data=TableauDisjonctifComplet outc=Coor outf=freqs dimens=27;
+      tables job  contact month day_of_week poutcome;
+   run;
+
+   PROC corresp
+ data=TableauDisjonctifComplet
+ outc=corresp (WHERE = (_TYPE_='OBS'))
+ DIMENS=5;
+ VAR &_trgind;
+run; 
+proc corresp  data=TableauDisjonctifComplet outc=Coor (WHERE = (_TYPE_='OBS'))  outf=freqs dimens=27;
+      tables job  contact month day_of_week poutcome;
+	  VAR &_trgind; 
+   run;
+
