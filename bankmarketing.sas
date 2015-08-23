@@ -8,19 +8,64 @@ DATA bankmarketing;
 	if job = "unknown" then delete;
 	if housing = "unknown" then delete;
 	if loan = "unknown" then delete;
+	ageCat = "     ";
+  	IF (age<31) THEN ageCat = "<31";
+    IF (age>30) and (age<35) THEN ageCat = "31-34";
+    IF (age>34) and (age<40) THEN ageCat = "35-39";
+    IF (age>39) and (age<48) THEN ageCat = "40-47";
+	IF (age>47) THEN ageCat = ">47";
+    
+	pdaysCat = "    ";
+  	IF (pdays<4) THEN pdaysCat = "<4";
+    IF (pdays>3) and (pdays<7) THEN pdaysCat = "4-6";
+    IF (pdays>6) and (pdays<999) THEN pdaysCat = ">7";
+    IF (pdays=999) THEN pdaysCat = "999";
+
 ;
 RUN; 
+PROC FREQ DATA=bankmarketing;
+  TABLES age ageCat;
+RUN;
+PROC FREQ DATA=bankmarketing;
+  TABLES pdays pdaysCat;
+RUN;	
+PROC FREQ DATA=bankmarketing;
+  TABLES nrEmployed;
+RUN;		
+PROC FREQ DATA=bankmarketing;
+  TABLES consConfIdx;
+RUN;		
+
 title 'Stepwise Regression on Cancer Remission Data';
    proc logistic data=bankmarketing outest=betas covout;
-      class  job marital education default housing loan contact month day_of_week  previous poutcome/param=glm ;
-      model y(event='yes')=duration age job marital education default housing loan contact month day_of_week previous poutcome empVarRate consPriceIdx  euribor3m nrEmployed / link=logit outroc=roc;
+      class  job marital education default housing loan contact month day_of_week  previous poutcome pdaysCat ageCat/param=glm ;
+      model y(event='yes')=duration pdaysCat ageCat age job marital education default housing loan contact month day_of_week previous poutcome empVarRate consPriceIdx  euribor3m nrEmployed / link=logit outroc=roc;
        output out=pred p=phat lower=lcl upper=ucl
              predprob=(individual crossvalidate);
    run;
+   proc logistic data=bankmarketing outest=betas covout;
+      class  job marital education default housing loan contact month day_of_week  previous poutcome pdaysCat ageCat/param=glm ;
+      model y(event='yes')=duration pdaysCat ageCat job marital education default housing loan contact month day_of_week previous poutcome empVarRate consPriceIdx  euribor3m nrEmployed / link=logit outroc=roc;
+       output out=pred p=phat lower=lcl upper=ucl
+             predprob=(individual crossvalidate);
+   run;
+proc logistic data=bankmarketing outest=betas covout;
+      class  job marital education default housing loan contact month day_of_week  previous poutcome pdaysCat ageCat/param=glm ;
+      model y(event='yes')= pdaysCat ageCat job marital education default housing loan contact month day_of_week previous poutcome empVarRate consPriceIdx  euribor3m nrEmployed / link=logit selection=stepwise details lackfit outroc=roc;
+       output out=pred p=phat lower=lcl upper=ucl
+             predprob=(individual crossvalidate);
+   run;  
+    
 
    proc logistic data=bankmarketing outest=betas covout;
-      class  job  contact month day_of_week poutcome/param=glm ;
-      model y(event='yes')=duration job   contact month day_of_week poutcome empVarRate consPriceIdx  euribor3m / link=logit ctable pprob = (0 to 1 by 0.025) outroc=roc;
+      class  job  contact month day_of_week poutcome ageCat pdaysCat/param=glm ;
+      model y(event='yes')=duration job ageCat pdaysCat  contact month day_of_week poutcome empVarRate consPriceIdx  euribor3m / link=logit ctable pprob = (0 to 1 by 0.025) outroc=roc;
+       output out=pred p=phat lower=lcl upper=ucl
+             predprob=(individual crossvalidate);
+   run;
+   proc logistic data=bankmarketing outest=betas covout;
+      class  job  contact month day_of_week poutcome ageCat pdaysCat/param=glm ;
+      model y(event='yes')=job ageCat pdaysCat  contact month day_of_week poutcome empVarRate consPriceIdx  euribor3m / link=logit ctable pprob = (0 to 1 by 0.025) outroc=roc;
        output out=pred p=phat lower=lcl upper=ucl
              predprob=(individual crossvalidate);
    run;
