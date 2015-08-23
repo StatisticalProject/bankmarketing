@@ -14,7 +14,6 @@ DATA bankmarketing;
     IF (age>34) and (age<40) THEN ageCat = "35-39";
     IF (age>39) and (age<48) THEN ageCat = "40-47";
 	IF (age>47) THEN ageCat = ">47";
-    
 	pdaysCat = "    ";
   	IF (pdays<4) THEN pdaysCat = "<4";
     IF (pdays>3) and (pdays<7) THEN pdaysCat = "4-6";
@@ -23,6 +22,14 @@ DATA bankmarketing;
 
 ;
 RUN; 
+proc surveyselect data=bankmarketing
+   method=srs n=1000 out=bankmarketingSelect;
+   
+run;
+data bankmarketingSelect;
+merge bankmarketingSelect;
+seqno = _n_;
+run;
 PROC FREQ DATA=bankmarketing;
   TABLES age ageCat;
 RUN;
@@ -86,17 +93,14 @@ proc logistic data=bankmarketing outest=betas covout;
              predprob=(individual crossvalidate);
    run;
    
-PROC TRANSREG DATA = bankmarketing
+PROC TRANSREG DATA = bankmarketingSelect
 DESIGN NOPRINT ;
 
-MODEL CLASS (job  contact month day_of_week poutcome) ;
+MODEL CLASS (ageCat pdaysCat job  contact month day_of_week poutcome) ;
 
 OUTPUT OUT = TableauDisjonctifComplet ;
 
 RUN ;
-proc corresp mca  data=TableauDisjonctifComplet outc=Coor outf=freqs dimens=27;
-      tables job  contact month day_of_week poutcome;
-   run;
 
    PROC corresp
  data=TableauDisjonctifComplet
@@ -104,8 +108,21 @@ proc corresp mca  data=TableauDisjonctifComplet outc=Coor outf=freqs dimens=27;
  DIMENS=5;
  VAR &_trgind;
 run; 
-proc corresp  data=TableauDisjonctifComplet outc=Coor (WHERE = (_TYPE_='OBS'))  outf=freqs dimens=27;
-      tables job  contact month day_of_week poutcome;
-	  VAR &_trgind; 
-   run;
 
+data correspN;
+merge corresp;
+seqno = _n_;
+run;
+data bankmarketingDiscrim;
+   merge correspN bankmarketingSelect;
+   by seqno;
+run;
+proc discrim  data=bankmarketingDiscrim method=normal pool=yes list crossvalidate;
+class y;
+var Dim1--Dim5;
+run;
+
+proc discrim  data=bankmarketingDiscrim method=npar  K=3 pool=yes list crossvalidate;
+class y;
+var Dim1--Dim5;
+run;
