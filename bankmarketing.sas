@@ -20,7 +20,9 @@ DATA bankmarketing;
     IF (pdays>6) and (pdays<999) THEN pdaysCat = ">7";
     IF (pdays=999) THEN pdaysCat = "999";
 	campaign=campaign*1;
-;
+	yInt=0;
+	IF (y="yes") THEN yInt = 1;
+	IF (y="no") THEN yInt = 0;
 RUN; 
 proc surveyselect data=bankmarketing
    method=srs n=1000 out=bankmarketingSelect;
@@ -142,5 +144,9 @@ ods graphics off;
 proc sort data=bankmarketing out=sortedBkMark;
 	by y;	
 run;
-
+/* Analyse des effets des catégories par rapport a la variable y*/
+proc anova data=bankmarketing ;
+   class job marital education default housing loan contact month day_of_week campaign pdays previous poutcome;
+   model yInt=job marital education default housing loan contact month day_of_week campaign pdays previous poutcome;
+run;
 
