@@ -1,5 +1,5 @@
 DATA bankmarketing;
-    infile "bank-additional-full.csv" delimiter=';';
+    infile "bank-additional-full.csv"  firstobs=2 delimiter=';';
     INPUT  age job $ marital $ education $ default $ housing $ loan $ contact $ month $ day_of_week $ duration campaign	$ pdays  previous $ poutcome $ empVarRate consPriceIdx consConfIdx euribor3m nrEmployed y $
 	;
 	if education = "unknown" then delete;
@@ -19,7 +19,7 @@ DATA bankmarketing;
     IF (pdays>3) and (pdays<7) THEN pdaysCat = "4-6";
     IF (pdays>6) and (pdays<999) THEN pdaysCat = ">7";
     IF (pdays=999) THEN pdaysCat = "999";
-
+	campaign=campaign*1;
 ;
 RUN; 
 proc surveyselect data=bankmarketing
@@ -126,3 +126,21 @@ proc discrim  data=bankmarketingDiscrim method=npar  K=3 pool=yes list crossvali
 class y;
 var Dim1--Dim5;
 run;
+
+
+/*Analyse univariee*/
+/* Données numériques */
+proc univariate data=bankmarketing plots;
+   var age duration pdays empVarRate consPriceIdx consConfIdx euribor3m nrEmployed;
+run;
+/* Données catégorielles */
+ods graphics on;
+proc freq data=bankmarketing;
+tables y job marital education default housing loan contact month day_of_week campaign pdays previous poutcome/ plots=freqplot;
+run; 
+ods graphics off;
+proc sort data=bankmarketing out=sortedBkMark;
+	by y;	
+run;
+
+
