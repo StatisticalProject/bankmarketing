@@ -1,6 +1,6 @@
 DATA bankmarketing;
     infile "bank-additional-full.csv"  firstobs=2 delimiter=';';
-    INPUT  age job $ marital $ education $ default $ housing $ loan $ contact $ month $ day_of_week $ duration campaign	$ pdays  previous $ poutcome $ empVarRate consPriceIdx consConfIdx euribor3m nrEmployed y $
+    INPUT  age job $ marital $ education $ default $ housing $ loan $ contact $ month $ day_of_week $ duration campaign pdays  previous poutcome $ empVarRate consPriceIdx consConfIdx euribor3m nrEmployed y $
 	;
 	if education = "unknown" then delete;
 	if marital = "unknown" then delete;
@@ -8,6 +8,13 @@ DATA bankmarketing;
 	if job = "unknown" then delete;
 	if housing = "unknown" then delete;
 	if loan = "unknown" then delete;
+
+	campaignCat = "  ";
+  	IF (campaign<2) THEN campaignCat = "1";
+    IF (campaign=2) THEN campaignCat = "2";
+    IF (campaign=3) THEN campaignCat = "3";
+    IF (campaign>3) THEN campaignCat = ">3";
+
 	ageCat = "     ";
   	IF (age<31) THEN ageCat = "<31";
     IF (age>30) and (age<35) THEN ageCat = "31-34";
@@ -19,8 +26,8 @@ DATA bankmarketing;
     IF (pdays>3) and (pdays<7) THEN pdaysCat = "4-6";
     IF (pdays>6) and (pdays<999) THEN pdaysCat = ">7";
     IF (pdays=999) THEN pdaysCat = "999";
-	campaign=campaign*1;
-	yInt=0;
+
+    yInt=0;
 	IF (y="yes") THEN yInt = 1;
 	IF (y="no") THEN yInt = 0;
 RUN; 
@@ -129,24 +136,50 @@ class y;
 var Dim1--Dim5;
 run;
 
+ods rtf file='resultat.rtf' style=journal;
+ods graphics on;
 
 /*Analyse univariee*/
 /* Données numériques */
 proc univariate data=bankmarketing plots;
-   var age duration pdays empVarRate consPriceIdx consConfIdx euribor3m nrEmployed;
+   var age duration empVarRate consPriceIdx consConfIdx euribor3m nrEmployed;
 run;
+/* Les ages par y */
+PROC SGPLOT DATA=bankmarketing ;
+  VBOX age /category = y;
+RUN ;
+
 /* Données catégorielles */
-ods graphics on;
 proc freq data=bankmarketing;
 tables y job marital education default housing loan contact month day_of_week campaign pdays previous poutcome/ plots=freqplot;
 run; 
-ods graphics off;
-proc sort data=bankmarketing out=sortedBkMark;
-	by y;	
-run;
-/* Analyse des effets des catégories par rapport a la variable y*/
-proc anova data=bankmarketing ;
-   class job marital education default housing loan contact month day_of_week campaign pdays previous poutcome;
-   model yInt=job marital education default housing loan contact month day_of_week campaign pdays previous poutcome;
-run;
 
+/* Analyse des effets de chaque variable sur y */
+proc freq data=bankmarketing;
+tables (job marital education default housing loan contact month day_of_week campaign pdays previous poutcome)*y /   NOCUM NOFREQ NOSPARSE NOWARN;
+run; 
+
+/* Modèle complet */
+proc logistic data=bankmarketing outest=betas covout;
+      class job marital education default housing loan contact month day_of_week  pdaysCat poutcome/param=glm ;
+      model y(event='yes')=age job marital education default housing loan contact month day_of_week campaign pdaysCat poutcome/ link=logit outroc=roc;
+       output out=pred p=phat lower=lcl upper=ucl
+             predprob=(individual crossvalidate);
+   run;
+
+/* Selection de variable */
+   proc logistic data=bankmarketing outest=betas covout;
+      class job marital education default housing loan contact month day_of_week  pdaysCat poutcome/param=glm ;
+      model y(event='yes')=age job marital education default housing loan contact month campaign pdaysCat poutcome/ link=logit outroc=roc selection=stepwise details lackfit;
+       output out=pred p=phat lower=lcl upper=ucl
+             predprob=(individual crossvalidate);
+   run;
+   /* Selection de variable avec effet du second ordre*/
+   proc logistic data=bankmarketing outest=betas covout;
+      class job marital education default housing loan contact month day_of_week  pdaysCat poutcome/param=glm ;
+      model y(event='yes')= day_of_week month*day_of_week contact*poutcome pdaysCat*contact age job marital education default housing loan contact month campaign pdaysCat poutcome/ link=logit outroc=roc selection=stepwise details lackfit;
+       output out=pred p=phat lower=lcl upper=ucl
+             predprob=(individual crossvalidate);
+   run;
+
+ods rtf close;
