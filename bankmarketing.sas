@@ -181,5 +181,15 @@ proc logistic data=bankmarketing outest=betas covout;
        output out=pred p=phat lower=lcl upper=ucl
              predprob=(individual crossvalidate);
    run;
+/* Modèle complet avec contrast */
+proc logistic data=bankmarketing outest=betas covout;
+      class job marital education default housing loan contact month day_of_week  pdaysCat poutcome/param=glm ;
+      model y(event='yes')=age job marital education default housing loan contact month day_of_week campaign pdaysCat poutcome/ link=logit outroc=roc;
+       output out=pred p=phat lower=lcl upper=ucl
+             predprob=(individual crossvalidate);
+			 contrast 'student vs retired' job 0 0 0 0 0 1 0 0 -1 0 0;
+			 contrast 'divorced vs married' marital 1 -1 0;
+			 contrast 'illetra vs universi' education 0 0 0 0 1 0 -1;
+run;
 
 ods rtf close;
