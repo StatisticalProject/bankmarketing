@@ -161,26 +161,32 @@ run;
 
 /* Modèle complet */
 proc logistic data=bankmarketing outest=betas covout;
-      class job marital education default housing loan contact month day_of_week  pdaysCat poutcome/param=glm ;
-      model y(event='yes')=age job marital education default housing loan contact month day_of_week campaign pdaysCat poutcome/ link=logit outroc=roc;
+      class job marital education default housing loan contact month day_of_week  pdays poutcome/param=glm ;
+      model y(event='yes')=age job marital education default housing loan contact month day_of_week campaign pdays poutcome/ link=logit RIDGING=ABSOLUTE outroc=roc;
        output out=pred p=phat lower=lcl upper=ucl
              predprob=(individual crossvalidate);
+			 contrast 'student vs retired' job 0 0 0 0 0 1 0 0 -1 0 0;
+			 contrast 'divorced vs married' marital 1 -1 0;
+			 contrast 'illetra vs universi' education 0 0 0 0 1 0 -1;
+			 contrast 'cellular vs phone' contact 1 -1;
+
    run;
 
 /* Selection de variable */
    proc logistic data=bankmarketing outest=betas covout;
-      class job marital education default housing loan contact month day_of_week  pdaysCat poutcome/param=glm ;
-      model y(event='yes')=age job marital education default housing loan contact month campaign pdaysCat poutcome/ link=logit outroc=roc selection=stepwise details lackfit;
+      class job marital education default housing loan contact month day_of_week  pdays poutcome/param=glm ;
+      model y(event='yes')=age job marital education default housing loan contact month campaign pdays poutcome/ link=logit outroc=roc RIDGING=ABSOLUTE selection=stepwise details lackfit;
        output out=pred p=phat lower=lcl upper=ucl
              predprob=(individual crossvalidate);
    run;
    /* Selection de variable avec effet du second ordre*/
    proc logistic data=bankmarketing outest=betas covout;
-      class job marital education default housing loan contact month day_of_week  pdaysCat poutcome/param=glm ;
-      model y(event='yes')= day_of_week month*day_of_week contact*poutcome pdaysCat*contact age job marital education default housing loan contact month campaign pdaysCat poutcome/ link=logit outroc=roc selection=stepwise details lackfit;
+      class job marital education default housing loan contact month day_of_week  pdays poutcome/param=glm ;
+      model y(event='yes')= day_of_week month*day_of_week contact*poutcome pdays*contact age job marital education default housing loan contact month campaign pdays poutcome/ link=logit outroc=roc RIDGING=ABSOLUTE selection=stepwise details lackfit;
        output out=pred p=phat lower=lcl upper=ucl
              predprob=(individual crossvalidate);
    run;
+   
 /* Modèle complet avec contrast */
 proc logistic data=bankmarketing outest=betas covout;
       class job marital education default housing loan contact month day_of_week  pdaysCat poutcome/param=glm ;
@@ -190,6 +196,7 @@ proc logistic data=bankmarketing outest=betas covout;
 			 contrast 'student vs retired' job 0 0 0 0 0 1 0 0 -1 0 0;
 			 contrast 'divorced vs married' marital 1 -1 0;
 			 contrast 'illetra vs universi' education 0 0 0 0 1 0 -1;
+			 contrast 'cellular vs phone' contact 1 -1;
 run;
 
 ods rtf close;
