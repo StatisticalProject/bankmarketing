@@ -159,26 +159,11 @@ proc freq data=bankmarketing;
 tables (job marital education default housing loan contact month day_of_week campaign pdays previous poutcome)*y /   NOCUM NOFREQ NOSPARSE NOWARN;
 run; 
 
-/* Modèle complet */
-proc logistic data=bankmarketing outest=betas covout;
-      class job marital education default housing loan contact month day_of_week  pdays poutcome/param=glm ;
-      model y(event='yes')=age job marital education default housing loan contact month day_of_week campaign pdays poutcome/ link=logit RIDGING=ABSOLUTE outroc=roc;
-       output out=pred p=phat lower=lcl upper=ucl
-             predprob=(individual crossvalidate);
-			 contrast 'student vs retired' job 0 0 0 0 0 1 0 0 -1 0 0;
-			 contrast 'divorced vs married' marital 1 -1 0;
-			 contrast 'illetra vs universi' education 0 0 0 0 1 0 -1;
-			 contrast 'cellular vs phone' contact 1 -1;
+proc freq data=bankmarketing ;
+tables pdaysCat ;
 
-   run;
+run;
 
-/* Selection de variable */
-   proc logistic data=bankmarketing outest=betas covout;
-      class job marital education default housing loan contact month day_of_week  pdays poutcome/param=glm ;
-      model y(event='yes')=age job marital education default housing loan contact month campaign pdays poutcome/ link=logit outroc=roc RIDGING=ABSOLUTE selection=stepwise details lackfit;
-       output out=pred p=phat lower=lcl upper=ucl
-             predprob=(individual crossvalidate);
-   run;
    /* Selection de variable avec effet du second ordre*/
    proc logistic data=bankmarketing outest=betas covout;
       class job marital education default housing loan contact month day_of_week  pdays poutcome/param=glm ;
@@ -197,6 +182,64 @@ proc logistic data=bankmarketing outest=betas covout;
 			 contrast 'divorced vs married' marital 1 -1 0;
 			 contrast 'illetra vs universi' education 0 0 0 0 1 0 -1;
 			 contrast 'cellular vs phone' contact 1 -1;
+run;
+
+
+/* Modèle complet */
+
+proc logistic data=bankmarketing outest=betas covout;
+      class job marital education default housing loan 
+contact month day_of_week  pdaysCat poutcome  ;
+      model y(event='yes')= age job marital education default 
+housing loan contact month day_of_week previous 
+campaign pdaysCat poutcome/ link=logit RIDGING=ABSOLUTE outroc=roc;
+       output out=pred p=phat lower=lcl upper=ucl
+            predprob=(individual crossvalidate);
+		contrast 'student vs retired' job 0 0 0 0 0 1 0 0 -1 0 0;
+	      contrast 'divorced vs married' marital 1 -1 0;
+	      contrast 'illetra vs universi' education 0 0 0 0 1 0 -1;
+run;
+
+/* Selection de variable */
+proc logistic data=bankmarketing outest=betas covout;
+      class job marital education default housing loan 
+contact month day_of_week  pdaysCat poutcome  ;
+      model y(event='yes')= age job marital education default 
+housing loan contact month day_of_week previous 
+campaign pdaysCat poutcome/ link=logit RIDGING=ABSOLUTE outroc=roc  selection=stepwise details lackfit;
+       output out=pred p=phat lower=lcl upper=ucl
+            predprob=(individual crossvalidate);
+run;
+
+
+
+/** Approche disqual */
+/** tableau disjonctif */
+PROC TRANSREG DATA = bankmarketing
+DESIGN NOPRINT ;
+
+MODEL CLASS ( job marital education default housing loan 
+contact month day_of_week  pdaysCat poutcome ) ;
+
+OUTPUT OUT = TableauDisjonctifComplet ;
+
+RUN ;
+/** Analyse des correspondances */
+PROC corresp
+ data=TableauDisjonctifComplet
+ outc=corresp (WHERE = (_TYPE_='OBS')) plot=none noprint
+ DIMENS=38;
+ VAR &_trgind;
+run;
+/** on melange avec les données orginelles */
+data bankmarketingDiscrim;
+   merge corresp bankmarketing;
+run;
+
+/** Dicriminante */
+proc discrim  data=bankmarketingDiscrim method=normal pool=yes list crossvalidate;
+class y;
+var Dim1--Dim38 age previous campaign ;
 run;
 
 ods rtf close;
