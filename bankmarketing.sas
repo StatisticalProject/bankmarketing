@@ -31,14 +31,16 @@ DATA bankmarketing;
 	IF (y="yes") THEN yInt = 1;
 	IF (y="no") THEN yInt = 0;
 RUN; 
-proc surveyselect data=bankmarketing
-   method=srs n=1000 out=bankmarketingSelect;
-   
-run;
-data bankmarketingSelect;
-merge bankmarketingSelect;
-seqno = _n_;
-run;
+/*Données d'apprentissage et de validation*/
+Proc Surveyselect data=bankmarketing seed=7 out=bankmarketingSplit samprate=.7 outall;
+Run;
+
+Data bktraining bkvalidation;
+Set bankmarketingSplit;
+if selected = 1 then output bktraining;
+else output bkvalidation;
+Run;
+
 PROC FREQ DATA=bankmarketing;
   TABLES age ageCat;
 RUN;
@@ -140,7 +142,7 @@ ods rtf file='resultat.rtf' style=journal;
 ods graphics on;
 
 /*Analyse univariee*/
-/* DonnÃ©es numÃ©riques */
+/* Données numériques */
 proc univariate data=bankmarketing plots;
    var age duration empVarRate consPriceIdx consConfIdx euribor3m nrEmployed;
 run;
@@ -149,7 +151,7 @@ PROC SGPLOT DATA=bankmarketing ;
   VBOX age /category = y;
 RUN ;
 
-/* DonnÃ©es catÃ©gorielles */
+/* Données catégorielles */
 proc freq data=bankmarketing;
 tables y job marital education default housing loan contact month day_of_week campaign pdays previous poutcome/ plots=freqplot;
 run; 
@@ -172,7 +174,7 @@ run;
              predprob=(individual crossvalidate);
    run;
    
-/* ModÃ¨le complet avec contrast */
+/* Modèle complet avec contrast */
 proc logistic data=bankmarketing outest=betas covout;
       class job marital education default housing loan contact month day_of_week  pdaysCat poutcome/param=glm ;
       model y(event='yes')=age job marital education default housing loan contact month day_of_week campaign pdaysCat poutcome/ link=logit outroc=roc;
@@ -185,7 +187,7 @@ proc logistic data=bankmarketing outest=betas covout;
 run;
 
 
-/* ModÃ¨le complet */
+/* Modèle complet */
 
 proc logistic data=bankmarketing outest=betas covout;
       class job marital education default housing loan 
@@ -231,13 +233,17 @@ PROC corresp
  DIMENS=38;
  VAR &_trgind;
 run;
-/** on melange avec les donnÃ©es orginelles */
+/** on melange avec les données orginelles */
 data bankmarketingDiscrim;
    merge corresp bankmarketing;
 run;
 
+proc standard data=bankmarketingDiscrim mean=0 std=1 out=bankmarketingDiscrimCR;
+   var age previous campaign;
+run;
+
 /** Dicriminante */
-proc discrim  data=bankmarketingDiscrim method=normal pool=yes list crossvalidate;
+proc discrim  data=bankmarketingDiscrimCR method=normal pool=yes list crossvalidate;
 class y;
 var Dim1--Dim38 age previous campaign ;
 run;
