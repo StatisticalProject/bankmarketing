@@ -70,30 +70,32 @@ run;
 /* Modèle complet avec contrast */
 proc logistic Data = bktraining ; 
       class job marital education default housing loan 
-contact month day_of_week  pdaysCat poutcome  ;
+       contact month day_of_week  pdaysCat poutcome /PARAM=effect ;
       model y(event='yes')= age job marital education default 
-housing loan contact month day_of_week previous 
-campaign pdaysCat poutcome/ ctable link=logit RIDGING=ABSOLUTE outroc=roc;
-       output out=pred p=phat lower=lcl upper=ucl
-            predprob=(individual crossvalidate);
-			score data=bkvalidation out = Logit_File outroc=vroc;
-		contrast 'student vs retired' job 0 0 0 0 0 1 0 0 -1 0 0;
-	      contrast 'divorced vs married' marital 1 -1 0;
-	      contrast 'illetra vs universi' education 0 0 0 0 1 0 -1;
+       housing loan contact month day_of_week previous 
+       campaign pdaysCat poutcome/ ctable link=logit 
+       RIDGING=ABSOLUTE outroc=roc;
+      output out=pred p=phat lower=lcl upper=ucl
+       predprob=(individual crossvalidate);
+	  score data=bkvalidation out = Logit_File outroc=vroc;
+	  contrast 'student vs retired' job 0 0 0 0 0 1 0 0 -1 0 0;
+	  contrast 'divorced vs married' marital 1 -1 0;
+	  contrast 'illetra vs universi' education 0 0 0 0 1 0 -1;
 	
 run;
 
 /* Selection de variable */
 proc logistic Data = bktraining ; 
       class job marital education default housing loan 
-contact month day_of_week  pdaysCat poutcome  ;
+       contact month day_of_week  pdaysCat poutcome  ;
       model y(event='yes')= age job marital education default 
-housing loan contact month day_of_week previous 
-campaign pdaysCat poutcome/ ctable link=logit RIDGING=ABSOLUTE outroc=roc  selection=forward details lackfit;
-       output out=pred p=phat lower=lcl upper=ucl
-            predprob=(individual crossvalidate);
-			score data=bkvalidation out = Logit_File outroc=vroc;
-	
+       housing loan contact month day_of_week previous 
+       campaign pdaysCat poutcome/ ctable link=logit 
+       RIDGING=ABSOLUTE outroc=roc  selection=forward 
+       details lackfit;
+      output out=pred p=phat lower=lcl upper=ucl
+       predprob=(individual crossvalidate);
+	  score data=bkvalidation out = Logit_File outroc=vroc;
 run;
 
 
